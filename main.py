@@ -1,28 +1,16 @@
-
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
-from db import insert_metric, get_recent_metrics, database
-import uvicorn
+from db import insert_metric, get_recent_metrics
 
 app = FastAPI()
 
-# Enable CORS for frontend testing
+# Enable CORS for frontend testing (optional, useful during development)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_methods=["*"],
-    allow_headers=["*"]
+    allow_headers=["*"],
 )
-
-# Connect to database when app starts
-@app.on_event("startup")
-async def startup():
-    await database.connect()
-
-# Disconnect when app shuts down
-@app.on_event("shutdown")
-async def shutdown():
-    await database.disconnect()
 
 @app.get("/metrics")
 async def read_metrics():
@@ -34,3 +22,6 @@ async def websocket_endpoint(websocket: WebSocket):
     while True:
         data = await websocket.receive_json()
         await insert_metric(data)
+
+# Let Render auto-detect the FastAPI app
+app = app
