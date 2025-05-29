@@ -1,25 +1,22 @@
 import os
-from dotenv import load_dotenv
 import psycopg2
 from psycopg2.extras import RealDictCursor
+import socket
 
-load_dotenv()
+# Force IPv4 resolution to avoid Render IPv6 issues
+def force_ipv4():
+    original_getaddrinfo = socket.getaddrinfo
 
-import urllib.parse as up
-up.uses_netloc.append("postgres")
+    def getaddrinfo_ipv4(*args, **kwargs):
+        return [info for info in original_getaddrinfo(*args, **kwargs) if info[0] == socket.AF_INET]
 
-# Parse DB URI manually
-db_url = os.getenv("DATABASE_URL")
-parsed_url = up.urlparse(db_url)
+    socket.getaddrinfo = getaddrinfo_ipv4
 
-conn = psycopg2.connect(
-    dbname=parsed_url.path[1:],
-    user=parsed_url.username,
-    password=parsed_url.password,
-    host=parsed_url.hostname,
-    port=parsed_url.port
-)
+force_ipv4()
 
+DB_URI = os.getenv("DATABASE_URL")
+
+conn = psycopg2.connect(DB_URI)
 cursor = conn.cursor(cursor_factory=RealDictCursor)
 
 def insert_metric(data):
