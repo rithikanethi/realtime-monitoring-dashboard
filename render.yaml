@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: realtime-monitoring-dashboard
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python main.py"
+    plan: free
+    envVars:
+      - key: DATABASE_URL
+        value: postgres://postgres:Rizizo$170101@db.qdhigtkmtdmnbsjlrcyk.supabase.co:5432/postgres
