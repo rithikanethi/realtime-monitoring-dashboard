@@ -1,12 +1,12 @@
+from databases import Database
 import os
-import databases
-from dotenv import load_dotenv
+# Load the database URL from the environment (.env or Render settings)
+DB_URI = os.getenv("DATABASE_URL")
 
-load_dotenv()
+# Create a database instance using asyncpg (handled internally by databases)
+database = Database(DB_URI)
 
-DATABASE_URL = os.getenv("DATABASE_URL")
-database = databases.Database(DATABASE_URL)
-
+# Insert a new metric into the 'metrics' table
 async def insert_metric(data):
     query = """
         INSERT INTO metrics (service, cpu_usage, status)
@@ -14,6 +14,11 @@ async def insert_metric(data):
     """
     await database.execute(query=query, values=data)
 
+# Fetch the 10 most recent metrics, ordered by timestamp
 async def get_recent_metrics():
-    query = "SELECT * FROM metrics ORDER BY timestamp DESC LIMIT 10"
+    query = """
+        SELECT * FROM metrics
+        ORDER BY timestamp DESC
+        LIMIT 10
+    """
     return await database.fetch_all(query=query)

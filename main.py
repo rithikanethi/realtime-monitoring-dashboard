@@ -1,29 +1,29 @@
-from fastapi import FastAPI, WebSocket
-from fastapi.middleware.cors import CORSMiddleware
-from db import insert_metric, get_recent_metrics
+import logging
+from fastapi import FastAPI
+from db import insert_metric, get_recent_metrics, database
 
 app = FastAPI()
 
-# Enable CORS for frontend testing
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Enable debug logging
+logging.basicConfig(level=logging.DEBUG)
+
+@app.get("/")
+def root():
+    return {"message": "API is live!"}
+
+@app.on_event("startup")
+async def startup():
+    await database.connect()
+
+@app.on_event("shutdown")
+async def shutdown():
+    await database.disconnect()
 
 @app.get("/metrics")
 async def read_metrics():
-    return await get_recent_metrics()
-
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
-    while True:
-        data = await websocket.receive_json()
-        await insert_metric(data)
-
-# Explicitly bind app to a port for Render to detect
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=10000, reload=False)
+    try:
+        data = await get_recent_metrics()
+        return data
+    except Exception as e:
+        logging.exception("Error fetching metrics:")
+        return {"error": str(e)}
