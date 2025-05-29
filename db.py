@@ -1,11 +1,25 @@
-
+import os
+from dotenv import load_dotenv
 import psycopg2
 from psycopg2.extras import RealDictCursor
-import os
 
-DB_URI = os.getenv("DATABASE_URL")
+load_dotenv()
 
-conn = psycopg2.connect(DB_URI)
+import urllib.parse as up
+up.uses_netloc.append("postgres")
+
+# Parse DB URI manually
+db_url = os.getenv("DATABASE_URL")
+parsed_url = up.urlparse(db_url)
+
+conn = psycopg2.connect(
+    dbname=parsed_url.path[1:],
+    user=parsed_url.username,
+    password=parsed_url.password,
+    host=parsed_url.hostname,
+    port=parsed_url.port
+)
+
 cursor = conn.cursor(cursor_factory=RealDictCursor)
 
 def insert_metric(data):
