@@ -1,32 +1,45 @@
 from fastapi import FastAPI, WebSocket
-from db import connect_db, disconnect_db, insert_metric, get_recent_metrics
+from fastapi.middleware.cors import CORSMiddleware
+from db import insert_metric, get_recent_metrics, database
+import uvicorn
+import os
 
 app = FastAPI()
 
-# Root route just for testing if the server is up
-@app.get("/")
-async def root():
-    return {"message": "Real-time monitoring dashboard is running."}
-
-# Connect to DB when server starts
+# Enable CORS for frontend testing
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 @app.on_event("startup")
 async def startup():
-    await connect_db()
-
-# Disconnect DB when server shuts down
+    await database.connect()
 @app.on_event("shutdown")
 async def shutdown():
-    await disconnect_db()
+    await database.disconnect()
 
-# Endpoint to fetch recent metrics
+@app.get("/")
+async def root():
+    return {"message": "Realtime Monitoring Dashboard API is running"}
 @app.get("/metrics")
 async def read_metrics():
-    return await get_recent_metrics()
-
-# WebSocket to receive live metrics
+    try:
+        return await get_recent_metrics()
+    except Exception as e:
+        return {"error": str(e)}
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     while True:
-        data = await websocket.receive_json()
-        await insert_metric(data)
+        try:
+            data = await websocket.receive_json()
+            await insert_metric(data)
+        except Exception as e:
+            await websocket.send_json({"error": str(e)})
+
+# ✅ Correct port binding for Render deployment
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 10000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
